@@ -1,11 +1,52 @@
 import sys
+from datetime import datetime
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QAbstractTableModel, Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QMainWindow,
-                               QMenuBar, QPushButton, QTableWidget,
+                               QMenuBar, QPushButton, QTableView, QTableWidget,
                                QTableWidgetItem, QTabWidget, QVBoxLayout,
                                QWidget)
 
+
+class TableModel(QAbstractTableModel):
+    def __init__(self, data=None):
+        super(TableModel, self).__init__()
+        self._data = data or [[1,2,3],[4,5,6]]
+
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            # See below for the nested-list data structure.
+            # .row() indexes into the outer list,
+            # .column() indexes into the sub-list
+            value = self._data[index.row()][index.column()]
+            
+            # string is expected by view to display. Convert by oneself to have control how it will be displayed.
+            if isinstance(value, float):
+                return "%.2f" % value
+
+            if isinstance(value, datetime):
+                return value.strftime("%Y-%m-%d")
+
+            # default: return type as it is
+            return value 
+
+        if role == Qt.DecorationRole:
+            value = self._data[index.row()][index.column()]
+            if isinstance(value, bool):
+                if value:
+                    return QColor('tick.png')
+                
+                return QColor('cross.png')
+
+    def rowCount(self, index):
+        # The length of the outer list.
+        return len(self._data)
+
+    def columnCount(self, index):
+        # The following takes the first sub-list, and returns
+        # the length (only works if all rows are an equal length)
+        return len(self._data[0])
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -24,11 +65,18 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget(self)
         layout.addWidget(self.tab_widget)
 
-        # Adding tables to tabs
+        # creating tables
         self.table1 = self.create_table()
         self.table2 = self.create_table()
+
+        self.table = QTableView()
+        self.model = TableModel()
+        self.table.setModel(self.model)
+
+        # adding tables to tabs
         self.tab_widget.addTab(self.table1, "Table 1")
         self.tab_widget.addTab(self.table2, "Table 2")
+        self.tab_widget.addTab(self.table, "Table 3")
 
         # Region D: Buttons
         self.button_layout = QHBoxLayout()
